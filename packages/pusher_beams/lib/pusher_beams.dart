@@ -325,22 +325,68 @@ class PusherBeams extends PusherBeamsPlatform with CallbackHandlerApi {
   ///
   /// **You're not supposed to use this**
   @override
-  void handleCallback(String callbackId, String callbackName, List args) {
-    final callback = _callbacks[callbackId]!;
+void handleCallback(String callbackId, String callbackName, List args) {
+  final callback = _callbacks[callbackId]!;
 
-    switch (callbackName) {
-      case "onInterestChanges":
+  switch (callbackName) {
+    case "onInterestChanges":
+      // Add bounds checking for args
+      if (args.isEmpty) {
+        print('Warning: Received empty args for onInterestChanges callback');
+        callback(<String>[]); // Pass empty list instead of crashing
+        return;
+      }
+      
+      // Additional safety check for the first argument
+      if (args[0] == null) {
+        print('Warning: First argument is null for onInterestChanges callback');
+        callback(<String>[]);
+        return;
+      }
+      
+      try {
         callback((args[0] as List<Object?>).cast<String>());
+      } catch (e) {
+        print('Error casting interests to List<String>: $e');
+        callback(<String>[]);
+      }
+      return;
+      
+    case "setUserId":
+      // Add bounds checking
+      if (args.isEmpty) {
+        print('Warning: Received empty args for setUserId callback');
+        callback(null);
         return;
-      case "setUserId":
-        callback(args[0] as String?);
+      }
+      callback(args[0] as String?);
+      return;
+      
+    case "onMessageReceivedInTheForeground":
+      // Add bounds checking
+      if (args.isEmpty) {
+        print('Warning: Received empty args for onMessageReceivedInTheForeground callback');
+        callback(<String, Object>{});
         return;
-      case "onMessageReceivedInTheForeground":
+      }
+      
+      if (args[0] == null) {
+        print('Warning: First argument is null for onMessageReceivedInTheForeground callback');
+        callback(<String, Object>{});
+        return;
+      }
+      
+      try {
         callback((args[0] as Map<Object?, Object?>));
-        return;
-      default:
-        callback();
-        return;
+      } catch (e) {
+        print('Error casting message to Map: $e');
+        callback(<String, Object>{});
+      }
+      return;
+      
+    default:
+      callback();
+      return;
     }
   }
 }
