@@ -319,28 +319,58 @@ class PusherBeams extends PusherBeamsPlatform with CallbackHandlerApi {
         .onMessageReceivedInTheForeground(kIsWeb ? callback : callbackId);
   }
 
-  /// Handler which receives callbacks from the native platforms.
-  /// This currently supports [onInterestChanges] and [setUserId] callbacks
-  /// but by default it just call the [Function] set.
-  ///
-  /// **You're not supposed to use this**
-  @override
-  void handleCallback(String callbackId, String callbackName, List args) {
-    final callback = _callbacks[callbackId]!;
 
-    switch (callbackName) {
-      case "onInterestChanges":
-        callback((args[0] as List<Object?>).cast<String>());
-        return;
-      case "setUserId":
-        callback(args[0] as String?);
-        return;
-      case "onMessageReceivedInTheForeground":
-        callback((args[0] as Map<Object?, Object?>));
-        return;
-      default:
-        callback();
-        return;
-    }
+  /// Registers a listener which calls back the [OnNotificationTapped] function when a notification is tapped.
+/// **This is not implemented on web.**
+///
+/// Notification is a map containing the following keys:
+///   * title
+///   * body
+///   * data
+///
+/// ## Example Usage
+///
+/// ```dart
+/// function someAsyncFunction() async {
+///   await PusherBeams.instance.onNotificationTapped((notification) => {
+///     print('Notification tapped: $notification')
+///   });
+/// }
+/// ```
+///
+/// Throws an [Exception] in case of failure.
+@override
+Future<void> onNotificationTapped(OnNotificationTapped callback) async {
+  final callbackId = _uuid.v4();
+
+  if (!kIsWeb) {
+    _callbacks[callbackId] = callback;
   }
+
+  await _pusherBeamsApi.onNotificationTapped(kIsWeb ? callback : callbackId);
+}
+
+// UPDATE the handleCallback method - ADD this case to the existing switch statement:
+@override
+void handleCallback(String callbackId, String callbackName, List args) {
+  final callback = _callbacks[callbackId]!;
+
+  switch (callbackName) {
+    case "onInterestChanges":
+      callback((args[0] as List<Object?>).cast<String>());
+      return;
+    case "setUserId":
+      callback(args[0] as String?);
+      return;
+    case "onMessageReceivedInTheForeground":
+      callback((args[0] as Map<Object?, Object?>));
+      return;
+    case "onNotificationTapped":
+      callback((args[0] as Map<Object?, Object?>));
+      return;
+    default:
+      callback();
+      return;
+  }
+}
 }
