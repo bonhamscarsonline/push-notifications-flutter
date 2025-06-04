@@ -214,10 +214,9 @@ public override func application(_ application: UIApplication, didFinishLaunchin
                 notificationData.merge(data) { current, _ in current }
             }
             
-            // Also include any direct userInfo keys that aren't in "data"
             for (key, value) in userInfo {
-                if key != "data" { // Don't duplicate the data object
-                    notificationData[key as! String] = value
+                if let stringKey = key as? String, stringKey != "data" {
+                    notificationData[stringKey] = value
                 }
             }
             
