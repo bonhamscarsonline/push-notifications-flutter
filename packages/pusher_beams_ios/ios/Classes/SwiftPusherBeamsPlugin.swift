@@ -41,20 +41,50 @@ public class SwiftPusherBeamsPlugin: FlutterPluginAppLifeCycleDelegate, FlutterP
         beamsClient?.handleNotification(userInfo: userInfo)
     }
 
-    public override func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [AnyHashable: Any] = [:]) -> Bool {
-        print("SwiftPusherBeamsPlugin: didFinishLaunchingWithOptions with options: \(String(describing: launchOptions))")
+public override func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [AnyHashable: Any] = [:]) -> Bool {
+    print("SwiftPusherBeamsPlugin: didFinishLaunchingWithOptions with options: \(String(describing: launchOptions))")
+    
+    if launchOptions[UIApplication.LaunchOptionsKey.remoteNotification] != nil {
+        let remoteNotif = launchOptions[UIApplication.LaunchOptionsKey.remoteNotification] as! [String: Any]
+        print("SwiftPusherBeamsPlugin: remoteNotif: \(remoteNotif)")
         
-        if launchOptions[UIApplication.LaunchOptionsKey.remoteNotification] != nil {
-            let remoteNotif = launchOptions[UIApplication.LaunchOptionsKey.remoteNotification] as! [String: Any]
-            let extraData = remoteNotif["data"] as? [String: Any]
-            data = extraData?["info"] as? [String: NSObject]
-            print("SwiftPusherBeamsPlugin: got initial data: \(String(describing: data))")
-        } else {
-            data = nil
+        // Store the complete notification data for getInitialMessage
+        var completeData: [String: NSObject] = [:]
+        
+        // Add basic notification content if available
+        if let aps = remoteNotif["aps"] as? [String: Any] {
+            if let alert = aps["alert"] as? [String: Any] {
+                completeData["title"] = alert["title"] as? NSObject
+                completeData["body"] = alert["body"] as? NSObject
+            } else if let alertString = aps["alert"] as? String {
+                completeData["body"] = alertString as NSObject
+            }
         }
-                        
-        return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+        
+        // Include all custom data
+        if let customData = remoteNotif["data"] as? [String: Any] {
+            for (key, value) in customData {
+                if let nsObjectValue = value as? NSObject {
+                    completeData[key] = nsObjectValue
+                }
+            }
+        }
+        
+        // Include any other top-level keys
+        for (key, value) in remoteNotif {
+            if key != "aps" && key != "data", let nsObjectValue = value as? NSObject {
+                completeData[key] = nsObjectValue
+            }
+        }
+        
+        data = completeData
+        print("SwiftPusherBeamsPlugin: got initial data: \(String(describing: data))")
+    } else {
+        data = nil
     }
+                    
+    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+}
     
     public func startInstanceId(_ instanceId: String, error: AutoreleasingUnsafeMutablePointer<FlutterError?>) {
         beamsClient = PushNotifications(instanceId: instanceId)
@@ -171,16 +201,24 @@ public class SwiftPusherBeamsPlugin: FlutterPluginAppLifeCycleDelegate, FlutterP
             let userInfo = response.notification.request.content.userInfo
             print("SwiftPusherBeamsPlugin: Processing notification tap with userInfo: \(userInfo)")
             
+            // Create the complete notification data structure
             var notificationData: [String: Any] = [:]
             
+            // Include basic notification content
             notificationData["title"] = response.notification.request.content.title
             notificationData["body"] = response.notification.request.content.body
             
+            // Include ALL userInfo data (this includes your custom data + pusher data)
             if let data = userInfo["data"] as? [String: Any] {
-                if let info = data["info"] as? [String: Any] {
-                    notificationData.merge(info) { current, _ in current }
+                // Merge all data from userInfo["data"]
+                notificationData.merge(data) { current, _ in current }
+            }
+            
+            // Also include any direct userInfo keys that aren't in "data"
+            for (key, value) in userInfo {
+                if key != "data" { // Don't duplicate the data object
+                    notificationData[key as! String] = value
                 }
-                notificationData["data"] = data
             }
             
             print("SwiftPusherBeamsPlugin: Sending notification tap callback with data: \(notificationData)")
