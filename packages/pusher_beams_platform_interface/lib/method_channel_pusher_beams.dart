@@ -52,12 +52,10 @@ class _PusherBeamsApiCodec extends StandardMessageCodec {
     if (value is BeamsAuthProvider) {
       buffer.putUint8(128);
       writeValue(buffer, value.encode());
-    } else if (value is dynamic) {
-      buffer.putUint8(129);
-      writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
     }
+}
   }
 
   @override
@@ -66,7 +64,7 @@ class _PusherBeamsApiCodec extends StandardMessageCodec {
       case 128: 
         return BeamsAuthProvider.decode(readValue(buffer)!);
       case 129: 
-        return dynamic.decode(readValue(buffer)!);
+        return readValue(buffer)!;
       default:
         return super.readValueOfType(type, buffer);
     }
