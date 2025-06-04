@@ -8,12 +8,12 @@ public class SwiftPusherBeamsPlugin: FlutterPluginAppLifeCycleDelegate, FlutterP
     
     var interestsDidChangeCallback : String? = nil
     var messageDidReceiveInTheForegroundCallback : String? = nil
+    var onNotificationTappedCallback : String? = nil
     
     var beamsClient : PushNotifications?
     var started : Bool = false
     var deviceToken : Data? = nil
     var data: [String: NSObject]?
-
 
     public static func register(with registrar: FlutterPluginRegistrar) {
         let messenger : FlutterBinaryMessenger = registrar.messenger()
@@ -145,6 +145,11 @@ public class SwiftPusherBeamsPlugin: FlutterPluginAppLifeCycleDelegate, FlutterP
         messageDidReceiveInTheForegroundCallback = callbackId
     }
     
+    public func onNotificationTappedCallbackId(_ callbackId: String, error: AutoreleasingUnsafeMutablePointer<FlutterError?>) {
+        print("SwiftPusherBeamsPlugin: Setting up notification tap listener with callback ID: \(callbackId)")
+        onNotificationTappedCallback = callbackId
+    }
+    
     public override func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         if (messageDidReceiveInTheForegroundCallback != nil && SwiftPusherBeamsPlugin.callbackHandler != nil) {
             let pusherMessage: [String : Any] = [
@@ -160,8 +165,33 @@ public class SwiftPusherBeamsPlugin: FlutterPluginAppLifeCycleDelegate, FlutterP
     }
 
     public override func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        // Handle the user interaction with the notification
-        // Not Implemented yet
+        print("SwiftPusherBeamsPlugin: Notification tapped with response: \(response)")
+        
+        if let callbackId = onNotificationTappedCallback, let callbackHandler = SwiftPusherBeamsPlugin.callbackHandler {
+            let userInfo = response.notification.request.content.userInfo
+            print("SwiftPusherBeamsPlugin: Processing notification tap with userInfo: \(userInfo)")
+            
+            var notificationData: [String: Any] = [:]
+            
+            notificationData["title"] = response.notification.request.content.title
+            notificationData["body"] = response.notification.request.content.body
+            
+            if let data = userInfo["data"] as? [String: Any] {
+                if let info = data["info"] as? [String: Any] {
+                    notificationData.merge(info) { current, _ in current }
+                }
+                notificationData["data"] = data
+            }
+            
+            print("SwiftPusherBeamsPlugin: Sending notification tap callback with data: \(notificationData)")
+            
+            callbackHandler.handleCallbackCallbackId(callbackId, callbackName: "onNotificationTapped", args: [notificationData], completion: { _ in
+                print("SwiftPusherBeamsPlugin: Notification tap callback completed")
+                completionHandler()
+            })
+        } else {
+            print("SwiftPusherBeamsPlugin: No notification tap callback registered, ignoring tap")
+            completionHandler()
+        }
     }
-    
 }
