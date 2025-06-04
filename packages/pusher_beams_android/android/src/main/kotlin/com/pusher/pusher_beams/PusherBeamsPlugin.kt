@@ -27,6 +27,7 @@ class PusherBeamsPlugin : FlutterPlugin, Messages.PusherBeamsApi, ActivityAware,
 
     private var data: kotlin.collections.Map<String, kotlin.Any?>? = null
     private var initialIntent = true
+    private var onNotificationTappedCallbackId: String? = null
 
     private lateinit var callbackHandlerApi: Messages.CallbackHandlerApi
 
@@ -64,15 +65,54 @@ class PusherBeamsPlugin : FlutterPlugin, Messages.PusherBeamsApi, ActivityAware,
         this.currentActivity = null;
     }
 
+    override fun onNotificationTapped(callbackId: String) {
+        Log.d(this.toString(), "Setting up notification tap listener with callback ID: $callbackId")
+        onNotificationTappedCallbackId = callbackId
+    }
+
+
     private fun handleIntent(context: Context, intent: Intent) {
         val extras = intent.extras
         if (extras != null) {
+            val notificationData = bundleToMap(extras.getString("info"))
+            Log.d(this.toString(), "Got notification data from intent: $notificationData")
+            
             if (initialIntent) {
-                Log.d(this.toString(), "Got extras: $extras")
-                data = bundleToMap(extras.getString("info"))
-                Log.d(this.toString(), "Got initial data: $data")
+                // This is for getInitialMessage() - cold start
+                Log.d(this.toString(), "Setting initial data for cold start")
+                data = notificationData
                 initialIntent = false
+            } else {
+                // This is for onNotificationTapped() - background/warm start
+                Log.d(this.toString(), "Handling notification tap for warm start")
+                handleNotificationTappedFromBackground(notificationData)
             }
+        }
+    }
+
+    private fun handleNotificationTappedFromBackground(notificationData: kotlin.collections.Map<String, kotlin.Any?>?) {
+        onNotificationTappedCallbackId?.let { callbackId ->
+            if (notificationData != null) {
+                Log.d(this.toString(), "Sending notification tap callback with data: $notificationData")
+                
+                // Create the notification map in the expected format
+                val notificationMap = mapOf(
+                    "title" to notificationData["title"],
+                    "body" to notificationData["body"], 
+                    "data" to notificationData
+                )
+                
+                callbackHandlerApi.handleCallback(
+                    callbackId,
+                    "onNotificationTapped",
+                    listOf(notificationMap),
+                    Messages.CallbackHandlerApi.Reply {
+                        Log.d(this.toString(), "Notification tap callback completed")
+                    }
+                )
+            }
+        } ?: run {
+            Log.d(this.toString(), "No notification tap callback registered, ignoring tap")
         }
     }
 
