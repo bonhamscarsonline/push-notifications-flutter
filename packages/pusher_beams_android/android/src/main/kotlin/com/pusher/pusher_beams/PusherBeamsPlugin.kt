@@ -65,12 +65,6 @@ class PusherBeamsPlugin : FlutterPlugin, Messages.PusherBeamsApi, ActivityAware,
         this.currentActivity = null;
     }
 
-    override fun onNotificationTapped(callbackId: String) {
-        Log.d(this.toString(), "Setting up notification tap listener with callback ID: $callbackId")
-        onNotificationTappedCallbackId = callbackId
-    }
-
-
     private fun handleIntent(context: Context, intent: Intent) {
         val extras = intent.extras
         if (extras != null) {
@@ -90,32 +84,6 @@ class PusherBeamsPlugin : FlutterPlugin, Messages.PusherBeamsApi, ActivityAware,
         }
     }
 
-    private fun handleNotificationTappedFromBackground(notificationData: kotlin.collections.Map<String, kotlin.Any?>?) {
-        onNotificationTappedCallbackId?.let { callbackId ->
-            if (notificationData != null) {
-                Log.d(this.toString(), "Sending notification tap callback with data: $notificationData")
-                
-                // Create the notification map in the expected format
-                val notificationMap = mapOf(
-                    "title" to notificationData["title"],
-                    "body" to notificationData["body"], 
-                    "data" to notificationData
-                )
-                
-                callbackHandlerApi.handleCallback(
-                    callbackId,
-                    "onNotificationTapped",
-                    listOf(notificationMap),
-                    Messages.CallbackHandlerApi.Reply {
-                        Log.d(this.toString(), "Notification tap callback completed")
-                    }
-                )
-            }
-        } ?: run {
-            Log.d(this.toString(), "No notification tap callback registered, ignoring tap")
-        }
-    }
-
     override fun start(instanceId: kotlin.String) {
         PushNotifications.start(this.context, instanceId)
         Log.d(this.toString(), "PusherBeams started with $instanceId instanceId")
@@ -124,6 +92,11 @@ class PusherBeamsPlugin : FlutterPlugin, Messages.PusherBeamsApi, ActivityAware,
     override fun getInitialMessage(result: Messages.Result<kotlin.collections.Map<String, kotlin.Any?>>) {
         Log.d(this.toString(), "Returning initial data: $data")
         result.success(data)
+    }
+
+    override fun onNotificationTapped(callbackId: String) {
+        Log.d(this.toString(), "Setting up notification tap listener with callback ID: $callbackId")
+        onNotificationTappedCallbackId = callbackId
     }
 
     override fun addDeviceInterest(interest: kotlin.String) {
@@ -253,6 +226,32 @@ class PusherBeamsPlugin : FlutterPlugin, Messages.PusherBeamsApi, ActivityAware,
             map[key] = infoJson.get(key)
         }
         return map
+    }
+
+    private fun handleNotificationTappedFromBackground(notificationData: kotlin.collections.Map<String, kotlin.Any?>?) {
+        onNotificationTappedCallbackId?.let { callbackId ->
+            if (notificationData != null) {
+                Log.d(this.toString(), "Sending notification tap callback with data: $notificationData")
+                
+                // Create the notification map in the expected format
+                val notificationMap = mapOf(
+                    "title" to notificationData["title"],
+                    "body" to notificationData["body"], 
+                    "data" to notificationData
+                )
+                
+                callbackHandlerApi.handleCallback(
+                    callbackId,
+                    "onNotificationTapped",
+                    listOf(notificationMap),
+                    Messages.CallbackHandlerApi.Reply {
+                        Log.d(this.toString(), "Notification tap callback completed")
+                    }
+                )
+            }
+        } ?: run {
+            Log.d(this.toString(), "No notification tap callback registered, ignoring tap")
+        }
     }
 }
 
