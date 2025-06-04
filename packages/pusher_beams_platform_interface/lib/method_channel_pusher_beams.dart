@@ -55,7 +55,6 @@ class _PusherBeamsApiCodec extends StandardMessageCodec {
     } else {
       super.writeValue(buffer, value);
     }
-}
   }
 
   @override
