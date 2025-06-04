@@ -89,7 +89,7 @@ class PusherBeamsPlugin : FlutterPlugin, Messages.PusherBeamsApi, ActivityAware,
         Log.d(this.toString(), "PusherBeams started with $instanceId instanceId")
     }
 
-    override fun getInitialMessage(result: Messages.Result<kotlin.collections.Map<String, kotlin.Any?>>) {
+    override fun getInitialMessage(result: Messages.Result<Map<String, Any?>>) {
         Log.d(this.toString(), "Returning initial data: $data")
         result.success(data)
     }
@@ -150,8 +150,8 @@ class PusherBeamsPlugin : FlutterPlugin, Messages.PusherBeamsApi, ActivityAware,
             object : AuthDataGetter {
                 override fun getAuthData(): AuthData {
                     return AuthData(
-                        headers = provider.headers,
-                        queryParams = provider.queryParams
+                        headers = provider.headers ?: emptyMap(),
+                        queryParams = provider.queryParams ?: emptyMap()
                     )
                 }
             }
