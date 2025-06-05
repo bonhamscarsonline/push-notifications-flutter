@@ -319,8 +319,7 @@ class PusherBeams extends PusherBeamsPlatform with CallbackHandlerApi {
         .onMessageReceivedInTheForeground(kIsWeb ? callback : callbackId);
   }
 
-
-  /// Registers a listener which calls back the [OnNotificationTapped] function when a notification is tapped.
+/// Registers a listener which calls back the [OnNotificationTapped] function when a notification is tapped.
 /// **This is not implemented on web.**
 ///
 /// Notification is a map containing the following keys:
@@ -350,24 +349,88 @@ Future<void> onNotificationTapped(OnNotificationTapped callback) async {
   await _pusherBeamsApi.onNotificationTapped(kIsWeb ? callback : callbackId);
 }
 
-// UPDATE the handleCallback method - ADD this case to the existing switch statement:
 @override
 void handleCallback(String callbackId, String callbackName, List args) {
   final callback = _callbacks[callbackId]!;
 
   switch (callbackName) {
     case "onInterestChanges":
-      callback((args[0] as List<Object?>).cast<String>());
+      // Add bounds checking for args
+      if (args.isEmpty) {
+        print('Warning: Received empty args for onInterestChanges callback');
+        callback(<String>[]); // Pass empty list instead of crashing
+        return;
+      }
+      
+      // Additional safety check for the first argument
+      if (args[0] == null) {
+        print('Warning: First argument is null for onInterestChanges callback');
+        callback(<String>[]);
+        return;
+      }
+      
+      try {
+        callback((args[0] as List<Object?>).cast<String>());
+      } catch (e) {
+        print('Error casting interests to List<String>: $e');
+        callback(<String>[]);
+      }
       return;
+      
     case "setUserId":
+      // Add bounds checking
+      if (args.isEmpty) {
+        print('Warning: Received empty args for setUserId callback');
+        callback(null);
+        return;
+      }
       callback(args[0] as String?);
       return;
+      
     case "onMessageReceivedInTheForeground":
-      callback((args[0] as Map<Object?, Object?>));
+      // Add bounds checking
+      if (args.isEmpty) {
+        print('Warning: Received empty args for onMessageReceivedInTheForeground callback');
+        callback(<String, Object>{});
+        return;
+      }
+      
+      if (args[0] == null) {
+        print('Warning: First argument is null for onMessageReceivedInTheForeground callback');
+        callback(<String, Object>{});
+        return;
+      }
+      
+      try {
+        callback((args[0] as Map<Object?, Object?>));
+      } catch (e) {
+        print('Error casting message to Map: $e');
+        callback(<String, Object>{});
+      }
       return;
+
     case "onNotificationTapped":
-      callback((args[0] as Map<Object?, Object?>));
+      // Add bounds checking for notification tapped
+      if (args.isEmpty) {
+        print('Warning: Received empty args for onNotificationTapped callback');
+        callback(<String, Object>{});
+        return;
+      }
+      
+      if (args[0] == null) {
+        print('Warning: First argument is null for onNotificationTapped callback');
+        callback(<String, Object>{});
+        return;
+      }
+      
+      try {
+        callback((args[0] as Map<Object?, Object?>));
+      } catch (e) {
+        print('Error casting notification to Map: $e');
+        callback(<String, Object>{});
+      }
       return;
+      
     default:
       callback();
       return;
