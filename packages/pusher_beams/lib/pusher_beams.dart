@@ -319,12 +319,37 @@ class PusherBeams extends PusherBeamsPlatform with CallbackHandlerApi {
         .onMessageReceivedInTheForeground(kIsWeb ? callback : callbackId);
   }
 
-  /// Handler which receives callbacks from the native platforms.
-  /// This currently supports [onInterestChanges] and [setUserId] callbacks
-  /// but by default it just call the [Function] set.
-  ///
-  /// **You're not supposed to use this**
-  @override
+/// Registers a listener which calls back the [OnNotificationTapped] function when a notification is tapped.
+/// **This is not implemented on web.**
+///
+/// Notification is a map containing the following keys:
+///   * title
+///   * body
+///   * data
+///
+/// ## Example Usage
+///
+/// ```dart
+/// function someAsyncFunction() async {
+///   await PusherBeams.instance.onNotificationTapped((notification) => {
+///     print('Notification tapped: $notification')
+///   });
+/// }
+/// ```
+///
+/// Throws an [Exception] in case of failure.
+@override
+Future<void> onNotificationTapped(OnNotificationTapped callback) async {
+  final callbackId = _uuid.v4();
+
+  if (!kIsWeb) {
+    _callbacks[callbackId] = callback;
+  }
+
+  await _pusherBeamsApi.onNotificationTapped(kIsWeb ? callback : callbackId);
+}
+
+@override
 void handleCallback(String callbackId, String callbackName, List args) {
   final callback = _callbacks[callbackId]!;
 
@@ -383,10 +408,32 @@ void handleCallback(String callbackId, String callbackName, List args) {
         callback(<String, Object>{});
       }
       return;
+
+    case "onNotificationTapped":
+      // Add bounds checking for notification tapped
+      if (args.isEmpty) {
+        print('Warning: Received empty args for onNotificationTapped callback');
+        callback(<String, Object>{});
+        return;
+      }
+      
+      if (args[0] == null) {
+        print('Warning: First argument is null for onNotificationTapped callback');
+        callback(<String, Object>{});
+        return;
+      }
+      
+      try {
+        callback((args[0] as Map<Object?, Object?>));
+      } catch (e) {
+        print('Error casting notification to Map: $e');
+        callback(<String, Object>{});
+      }
+      return;
       
     default:
       callback();
       return;
-    }
   }
+}
 }
